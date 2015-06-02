@@ -1,0 +1,46 @@
+
+User Creation
+-------------
+SHARE #pubkey XXXXXXX #time t1 @mysensors ^kasun yyyyyyyyyy
+SHARE #pubkey YYYYYYY #time t2 @mysensors ^home0 yyyyyyyyyy
+DATA #msg [OK,ErrorCode] @home0 #time t3 ^mysensors XXXXXXXXX
+
+Keep the connections
+--------------------
+DATA #time t1 @mysensors ^kasun YYYYYY
+DATA #time t1 @mysensors ^home0 YYYYYY
+
+
+Public keys need to be exchanged
+--------------------------------
+SHARE #pubkey XXXXXXX #time t1 @home0 ^kasun yyyyyyyyyy
+SHARE #pubkey YYYYYYY #time t2 @kasun ^home0 yyyyyyyyyy
+DATA #msg [OK,ErrorCode] @home0 #time t3 ^kasun XXXXXXXXX
+
+
+Access should be granted
+------------------------
+SHARE #gpio10 @kasun #time t2 ^home0 YYYYYYYYYYY
+SHARE #lat #lon @home0 #time 2 ^kasun YYYYYYYYYYY
+DATA #msg [OK,ErrorCode] @home0 #time t3 ^[kasun,mysensors] XXXXXXXXX
+
+
+Control the device
+------------------
+PUT #gpio10 ON @home0 #time t3 ^kasun XXXXXXXXX
+DATA #gpio10 ON @kasun #time t4 ^home0 YYYYYYYYYYYYY
+
+GET #lat #lon @kasun #time t3 ^home0 XXXXXXXXX
+DATA #lat x #lon y @home0 #time t4 ^kasun YYYYYYYYYYYYY
+
+
+Control the device with encryption
+----------------------------------
+PUT #cipher [#gpio10 ON] @home0 #time t3 ^kasun XXXXXXXXX
+DATA #cipher [#gpio10 ON] @kasun #time t4 ^home0 YYYYYYYYYYYYY
+
+
+GET #cipher [#lat #lon] @kasun #time t3 ^home0 XXXXXXXXX
+DATA #cipher [#lat x #lon y] @home0 #time t4 ^kasun YYYYYYYYYYYYY
+
+

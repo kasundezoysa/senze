@@ -1,0 +1,17 @@
+
+User Creation
+-------------
+@kasun SHARE #pubkey XXX @mysensors #signature YYYYYYYYYY
+@home0 SHARE #pubkey YYY @mysensors #signature ZZZZZZZZZZ
+
+@kasun DATA #time xxx @mysensors #signature
+@home0 DATA #time yyy @mysensors #signature
+
+@home0 SHARE #gpio10 @kasun #time zzz #signature YYYYYYYYYYY
+@kasun PUT #gpio10 @home0 #time zzz #signature xxxxxxxxxxxxxxx
+@home0 DATA #gpio10 ON @kasun #time zzz #signature zzzzzzzzzzz
+
+@home0 SHARE #lat #lon @kasun #time zzz #signature YYYYYYYYYYY
+@kasun GET #lat #lon @home0 #time zzz #signature xxxxxxxxxxxxxxx
+@home0 DATA #lat 2222 #lon 4444 @kasun #time zzz #signature zzzzzzzzzzz
+
