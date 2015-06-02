@@ -14,27 +14,23 @@ from myParser import *
 from myUser import *
 from myCrypto import *
 
-#Server address and port number should be assigned here
-#SERVER_URL="ws://connect.mysensors.mobi:8080"
-SERVER_URL="ws://localhost:8080" 
-PORT=8080
+#Server port number should be assigned here
+port=9090
 
-# manage connection in a dictionary, we save connection along with user/device name
+#manage connection in a dictionary, we save connection along with user/device name
 connections={}
 deletedConnections={}
+
 #These variables will be used to keep the server name and its public key
 serverName="mysensors"
 pubkey=""
 #Database connection will be kept here
 usrDatabase=""
 
-# Here we implement the mySensor Protocol
-
-# Here's a UDP version of the simplest possible protocol
+# Here's a UDP version of the simplest possible SENZE protocol
 class mySensorUDPServer(DatagramProtocol):
-    clients={}
-    
-    def createUser(self,sender,signature,sensors,data,address):
+   
+   def createUser(self,sender,signature,sensors,data,address):
        global usrDatabase
        global serverName
     
@@ -44,13 +40,7 @@ class mySensorUDPServer(DatagramProtocol):
        pub='';p='';
        if 'pubkey' in data: pub=data['pubkey']
        if 'phone' in data: p= data['phone']
-       
-       st='SHARE #pubkey %s' %(pub)
-       if cry.verifySign(pub,signature,sender):
-          status=usr.putUser(sender,p,signature,pub,'pubkey')
-       else:
-          status=False                
-       
+       status=usr.putUser("",p,signature,pub,'pubkey')
        st="DATA #msg "   
        if status:
              st+='UserCreated'
@@ -59,7 +49,9 @@ class mySensorUDPServer(DatagramProtocol):
        self.transport.write(st,address)
 
 
-    def datagramReceived(self, datagram, address):
+   def datagramReceived(self, datagram, address):
+       global serverName
+       global usrDatabase
 
        parser=myParser(datagram)
        recipients=parser.getUsers()
@@ -69,25 +61,68 @@ class mySensorUDPServer(DatagramProtocol):
        sensors=parser.getSensors()
        cmd=parser.getCmd()
        
+       cry=myCrypto(serverName) 
+       sen=myUser(usrDatabase,sender)
+         
        if cmd=="SHARE":
-          if "pubkey" in sensors:
-             if serverName in recipients:
+          if "pubkey" in sensors and serverName in recipients:
+             pubkey=data['pubkey']
+             if cry.verifySENZE(pubkey,parser.getSENZE(),parser.getSignature()):
                 #Create a new account 
-                self.createUser(sender,signature,sensors,data,address)
-            
+                self.createUser(sender,signature,sensors,data,address) 
        elif cmd=="GET":
-            print datagram
+            pubkey=sen.loadPublicKey()
+            if pubkey !="":
+               if cry.verifySENZE(pubkey,parser.getSENZE(),parser.getSignature()):
+                  print datagram
+               else:
+                  print "Verification Failed"
        else:
             datagram="BAD COMMAND"
 
-       if address[0] not in self.clients:
-           self.clients[address[0]]=address[1]
-       print self.clients
+       #if address[0] not in self.clients:
+       #    self.clients[address[0]]=address[1]
+       #print self.clients
        print address[1]
        self.transport.write(datagram, address)
 
+def init():
+#If .servername is not there we will read the server name from keyboard
+#else we will get it from .servername file
+   try:
+      if not os.path.isfile(".servername"):
+         serverName=raw_input("Enter the server name:")
+         f=open(".servername",'w')
+         f.write(serverName+'\n')
+         f.close()
+      else:
+         #The server name will be read form the .servername file
+         f=open(".servername","r")
+         serverName = f.readline().rstrip("\n")
+   except:
+      print "ERRER: Cannot access the server name file."
+      raise SystemExit
+
+   #Here we will generate public and private keys for the server
+   #These keys will be used to authentication
+   #If keys are not available yet
+   global pubkey
+   try:
+      cry=myCrypto(serverName) 
+      if not os.path.isfile(cry.pubKeyLoc):
+         # Generate or loads an RSA keypair with an exponent of 65537 in PEM format
+         # Private key and public key was saved in the .servernamePriveKey and .servernamePubKey files
+         cry.generateRSA(1024)
+      pubkey=cry.loadRSAPubKey()
+   except:
+      print "ERRER: Cannot genereate private/public keys for the server."
+      raise SystemExit
+
+
 def main():
     global usrDatabase
+    global port
+
     #Create connection to the Mongo DB
     try:
        client = MongoClient('localhost', 27017)
@@ -100,10 +135,12 @@ def main():
        print "ERRER: Cannot aaccess the Mongo database."
        raise SystemExit
 
-    reactor.listenUDP(9090, mySensorUDPServer())
+    reactor.listenUDP(port, mySensorUDPServer())
     reactor.run()
 
 if __name__ == '__main__':
+    init()
+    #print pubkey
     main()
 
 

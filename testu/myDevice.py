@@ -6,6 +6,8 @@
 
 from twisted.internet.protocol import DatagramProtocol
 from twisted.internet import reactor
+import datetime
+
 import socket
 import time
 import sys
@@ -28,11 +30,7 @@ device=""
 server="mysensors"
 
 class mySensorDatagramProtocol(DatagramProtocol):
-    strings = [
-        "Hello, world!",
-        "What a fine day it is.",
-        "Bye-bye!"]
-
+  
     def __init__(self, host,port,reactor):
         self.ip= socket.gethostbyname(host)
         self.port = port
@@ -41,27 +39,32 @@ class mySensorDatagramProtocol(DatagramProtocol):
 
     def startProtocol(self):
         self.transport.connect(self.ip,self.port)
-        self.sendDatagram()
-    
+        if state=='INITIAL':
+           #If system is at the initial state, it will send the device creation Senze
+           self.register()
+        else:
+           response=raw_input("Enter your Senze:")
+           self.sendDatagram(response)
+
     def stopProtocol(self):
         #on disconnect
         #self._reactor.listenUDP(0, self)
         print "STOP **************"
 
-    def sendDatagram(self):
+    def register(self):
         global server
         cry=myCrypto(name=device) 
-        #If system is at the initial state, it will send the device creation Senze
-        #The otherwise, it will send the login Senze
-        if state=='INITIAL':
-           signature=cry.signData(data=device);
-           response ='SHARE #pubkey %s @%s ^%s %s' %(pubkey,server,device,signature)
-           print response
-           self.transport.write(response)
-        else:
-           response=raw_input("Enter your Senze:")
-           self.transport.write(response)
-
+        senze ='SHARE #pubkey %s @%s' %(pubkey,server)
+        senze=cry.signSENZE(senze)
+        self.transport.write(senze)
+        
+    def sendDatagram(self,senze):
+        global server
+        cry=myCrypto(name=device)
+        senze=cry.signSENZE(senze)
+        print senze
+        self.transport.write(senze)
+    
     def datagramReceived(self, datagram, host):
         print 'Datagram received: ', repr(datagram)
         
@@ -73,6 +76,7 @@ class mySensorDatagramProtocol(DatagramProtocol):
         sensors=parser.getSensors()
         cmd=parser.getCmd()
        
+        
         if cmd=="DATA":
            if 'UserCreated' in data['msg']:
                #Creating the .devicename file and store the device name and PIN  

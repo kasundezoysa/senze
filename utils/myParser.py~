@@ -35,6 +35,7 @@ class myParser:
       self.data={}
       self.sender=""
       self.signature=""
+      self.senze=""
 
       tList=msg.split()
       state='CLEAR'
@@ -44,6 +45,7 @@ class myParser:
       
       while tList:
           word=tList.pop(0)
+          self.senze+=word
 
           if word.upper() in commandList:
              self.command=word
@@ -63,7 +65,7 @@ class myParser:
               if state=='DATA':
                  self.data[sen]=word
                  state='CLEAR'
-          print word
+          #print word
 
 
    def getUsers(self):
@@ -81,6 +83,9 @@ class myParser:
 
    def getSender(self):
        return self.sender
+
+   def getSENZE(self):
+       return self.senze
 
    def getSignature(self):
        return self.signature
@@ -110,6 +115,7 @@ for l in testData:
   print "Data: ", m.getData()
   print "Commands: ", m.getCmd()
   print "Sender: ", m.getSender()
+  print "Sender: ", m.getSENZE()
   print "Signature:",m.getSignature()
   print "-------------------------"
   raw_input()

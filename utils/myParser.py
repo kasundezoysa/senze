@@ -35,6 +35,7 @@ class myParser:
       self.data={}
       self.sender=""
       self.signature=""
+      self.senze=""
 
       tList=msg.split()
       state='CLEAR'
@@ -44,6 +45,7 @@ class myParser:
       
       while tList:
           word=tList.pop(0)
+          self.senze+=word
 
           if word.upper() in commandList:
              self.command=word
@@ -82,9 +84,12 @@ class myParser:
    def getSender(self):
        return self.sender
 
+   def getSENZE(self):
+       return self.senze
+
    def getSignature(self):
        return self.signature
-
+'''
 #testData=["SHARE #pubkey LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUlHZk1BMEdDU3FHU0liM0RRRUJBUVVBQTRHTkFEQ0JpUUtCZ1FDbit1eVpzcXIxeS93Y2hjTkh1MzducE5RSwpSRHFBOTl6REkxeUtzOTFLNUJvNWFKWG1qOXc2cUJwdnVPdkNZQUxHcEdXVC9NUm1Ka3pLOGZUclJhVFlyY1ZMCkJsbklkMXVneWUzZDJFM3lBRFREZlNWWGlOZXpKS2MrSkErN0ExV25FZ0tacXB6ZmYvalNhZXgrR25YcWZ5d0cKeVQvR201QnhwdTc2SXFkYU9RSURBUUFCCi0tLS0tRU5EIFBVQkxJQyBLRVktLS0tLQ== @mysensors ^home0 iT4zN85/JNaWiDw56gLqYFDpf6dwkfUOIkP/QlGvLOz4PF7KgJOhefEfH8xQXBmLQAOq3blIVuHIZC55CqTFevfovLcy4Ff42VEFAqMqj42Z3cmoApxgU6tzs/V5BjlrmQAry2TGQ0Qx18uqJANjuyvxMTMMwpiWRK1GM5jZch4="]
 
 testData=["SHARE #pubkey XXXXXXX #time t1 @mysensors ^kasun yyyyyyyyyy",
@@ -101,7 +106,7 @@ testData=["SHARE #pubkey XXXXXXX #time t1 @mysensors ^kasun yyyyyyyyyy",
 "PUT #cipher XXXgpio10ON @home0 #time t3 ^kasun XXXXXXXXX",
 "DATA #cipher xxxgpio10ON @kasun #time t4 ^home0 YYYYYYYYYYYYY",
 "GET #cipher xxxlatlon @kasun #time t3 ^home0 XXXXXXXXX"]
-'''
+
 for l in testData:
   m= myParser(l)
   
@@ -110,6 +115,7 @@ for l in testData:
   print "Data: ", m.getData()
   print "Commands: ", m.getCmd()
   print "Sender: ", m.getSender()
+  print "Sender: ", m.getSENZE()
   print "Signature:",m.getSignature()
   print "-------------------------"
   raw_input()
