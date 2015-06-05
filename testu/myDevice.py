@@ -78,7 +78,7 @@ class mySensorDatagramProtocol(DatagramProtocol):
        
         
         if cmd=="DATA":
-           if 'UserCreated' in data['msg']:
+           if 'msg' in sensors and 'UserCreated' in data['msg']:
                #Creating the .devicename file and store the device name and PIN  
                f=open(".devicename",'w')
                f.write(device+'\n')
@@ -88,12 +88,15 @@ class mySensorDatagramProtocol(DatagramProtocol):
                print "The system halted!"
                reactor.stop()
 
-           elif 'UserCreationFailed' in data['msg']:
+           elif 'msg' in sensors and 'UserCreationFailed' in data['msg']:
               print "This user name may be already taken"
               print "You can try it again with different username"
               print "The system halted!"
               reactor.stop()
 
+           elif 'pubkey' in sensors:
+                print datagram
+          
          #self.sendDatagram()
 
 def init():

@@ -82,6 +82,66 @@ class mySensorUDPServer(DatagramProtocol):
               self.transport.write(query.getFULLSENZE(),forward)
 
 
+   def GETSenze(self,query):
+       global connections
+       global database
+       global serverName
+
+       sender=query.getSender()
+       sensors=query.getSensors()
+       usr=myUser(database,serverName)
+       recipients=query.getUsers() 
+       for recipient in recipients:
+           recipientDB=myUser(database,recipient)  
+           if 'pubkey' in sensors:
+               #Since mysensors already has public key of it clients,
+               #it responses on behalf of the client.
+               pubkey=recipientDB.loadPublicKey()
+               if pubkey!='' :
+                  if sender in connections.keys():
+                     backward=connections[sender]    
+                     senze='DATA #pubkey %s' %(pubkey)
+                     print "*******************"
+                     self.transport.write(senze,backward)
+           #Otherwise GET message will forward to the recipients     
+           else:
+               if recipient in connections.keys():
+                  forward=connections[recipient]
+                  if recipientDB.isShare(sender,query.getSensors()):
+                     self.transport.write(query.getFULLSENZE(),forward)
+  
+
+   def PUTSenze(self,query):
+       global connections
+       global database
+       
+       sender=query.getSender()
+       usr=myUser(database,sender)
+       recipients=query.getUsers()
+       #PUT message will forward to the recipients     
+       for recipient in recipients:
+           if recipient in connections.keys():
+              recipientDB=myUser(database,recipient)
+              if recipientDB.isShare(sender,query.getSensors()):
+                 forward=connections[recipient]
+                 self.transport.write(query.getFULLSENZE(),forward)
+
+
+   def DATASenze(self,query):
+       global connections
+       global database
+       
+       sender=query.getSender()
+       usr=myUser(database,sender)
+       recipients=query.getUsers()
+       for recipient in recipients:
+           if recipient in connections.keys():
+              recipientDB=myUser(database,recipient)
+              if recipientDB.isAllow(sender,query.getSensors()):
+                 forward=connections[recipient]
+                 self.transport.write(query.getFULLSENZE(),forward)
+
+
    def datagramReceived(self, datagram, address):
        global serverName
        global usrDatabase
@@ -110,15 +170,14 @@ class mySensorUDPServer(DatagramProtocol):
             if cmd=="SHARE":
                 self.shareSensors(query)
             elif cmd=="UNSHARE":
-                print "$$$$$$$$$$$$$$$$$$$$$$$$"
                 self.unshareSensors(query)
+            elif cmd=="GET":
+                self.GETSenze(query)
+            elif cmd=="PUT":
+                self.PUTSenze(query)
+            elif cmd=="DATA":
+                self.DATASenze(query)
 
-            '''
-            for recipient in recipients:
-                if recipient in connections.keys():
-                   forward=connections[recipient]
-                 self.transport.write(datagram,forward)
-           '''
        else:
             datagram="Bad query"
             self.transport.write(datagram, address)

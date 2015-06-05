@@ -54,16 +54,16 @@ class mySensorDatagramProtocol(DatagramProtocol):
     def register(self):
         global server
         cry=myCrypto(name=device) 
-        response ='SHARE #pubkey %s @%s' %(pubkey,server)
-        response=cry.signSENZE(response)
-        self.transport.write(response)
+        senze ='SHARE #pubkey %s @%s' %(pubkey,server)
+        senze=cry.signSENZE(senze)
+        self.transport.write(senze)
         
     def sendDatagram(self,senze):
         global server
         cry=myCrypto(name=device)
         senze=cry.signSENZE(senze)
         print senze
-        self.transport.write(response)
+        self.transport.write(senze)
     
     def datagramReceived(self, datagram, host):
         print 'Datagram received: ', repr(datagram)
