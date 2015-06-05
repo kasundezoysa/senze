@@ -36,11 +36,13 @@ class myParser:
       self.sender=""
       self.signature=""
       self.senze=""
+      self.fullSenze=""
 
+      self.fullSenze=msg
       tList=msg.split()
       state='CLEAR'
       sen=""
-      commandList=["SHARE",":SHARE","PUT","GET","DATA"]
+      commandList=["SHARE","UNSHARE","PUT","GET","DATA"]
       print msg
       
       while tList:
@@ -87,9 +89,12 @@ class myParser:
    def getSENZE(self):
        return self.senze
 
+   def getFULLSENZE(self):
+       return self.fullSenze
+
    def getSignature(self):
        return self.signature
-
+'''
 #testData=["SHARE #pubkey LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUlHZk1BMEdDU3FHU0liM0RRRUJBUVVBQTRHTkFEQ0JpUUtCZ1FDbit1eVpzcXIxeS93Y2hjTkh1MzducE5RSwpSRHFBOTl6REkxeUtzOTFLNUJvNWFKWG1qOXc2cUJwdnVPdkNZQUxHcEdXVC9NUm1Ka3pLOGZUclJhVFlyY1ZMCkJsbklkMXVneWUzZDJFM3lBRFREZlNWWGlOZXpKS2MrSkErN0ExV25FZ0tacXB6ZmYvalNhZXgrR25YcWZ5d0cKeVQvR201QnhwdTc2SXFkYU9RSURBUUFCCi0tLS0tRU5EIFBVQkxJQyBLRVktLS0tLQ== @mysensors ^home0 iT4zN85/JNaWiDw56gLqYFDpf6dwkfUOIkP/QlGvLOz4PF7KgJOhefEfH8xQXBmLQAOq3blIVuHIZC55CqTFevfovLcy4Ff42VEFAqMqj42Z3cmoApxgU6tzs/V5BjlrmQAry2TGQ0Qx18uqJANjuyvxMTMMwpiWRK1GM5jZch4="]
 
 testData=["SHARE #pubkey XXXXXXX #time t1 @mysensors ^kasun yyyyyyyyyy",
@@ -119,4 +124,4 @@ for l in testData:
   print "Signature:",m.getSignature()
   print "-------------------------"
   raw_input()
-
+'''

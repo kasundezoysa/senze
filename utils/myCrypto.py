@@ -135,7 +135,7 @@ class myCrypto:
     sign = signer.sign(digest)
     return b64encode(sign)
 
-  def verifySENZE(self,publicKey,senze,signature):
+  def verifySENZE(self,query,publicKey):
     from Crypto.Signature import PKCS1_v1_5
     '''
     Verifies with a public key from whom the data came that it was indeed 
@@ -143,18 +143,18 @@ class myCrypto:
     param: public_key
     param: senze
     param: signature String signature to be verified
-    return: Boolean. True if the signature is valid; False otherwise. 
+    return: Boolean. True if the signaetture is valid; False otherwise. 
     '''
     rsakey = RSA.importKey(b64decode(publicKey)) 
     signer = PKCS1_v1_5.new(rsakey)
-    digest = SHA256.new(senze) 
+    digest = SHA256.new(query.getSENZE()) 
     # Assumes the data is base64 encoded to begin with
-    if signer.verify(digest,b64decode(signature)):
+    if signer.verify(digest,b64decode(query.getSignature())):
        return True
     else:
        return False
 
-  def verifySign(self,publicKey, signature, data):
+  def verifySign(self,publicKey,signature,data):
     from Crypto.Signature import PKCS1_v1_5
     '''
     Verifies with a public key from whom the data came that it was indeed 

@@ -1,8 +1,0 @@
-#GET #friends d1,kasun,nimal,d5 @mysensors
-SHARE #cipher @d1
-SHARE #tp @d1
-GET #pubkey @d1
-#:PUT #gpio13 @home0
-#GET #photo @home0
-#PUT #gpio13 @home0
-#GET #photo @home0

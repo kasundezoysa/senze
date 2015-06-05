@@ -36,11 +36,13 @@ class myParser:
       self.sender=""
       self.signature=""
       self.senze=""
+      self.fullSenze=""
 
+      self.fullSenze=msg
       tList=msg.split()
       state='CLEAR'
       sen=""
-      commandList=["SHARE",":SHARE","PUT","GET","DATA"]
+      commandList=["SHARE","UNSHARE","PUT","GET","DATA"]
       print msg
       
       while tList:
@@ -86,6 +88,9 @@ class myParser:
 
    def getSENZE(self):
        return self.senze
+
+   def getFULLSENZE(self):
+       return self.fullSenze
 
    def getSignature(self):
        return self.signature

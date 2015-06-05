@@ -48,21 +48,7 @@ class myUser:
            self.usrDoc=doc
        else:
           doc=""
-   
-   def addUser(self,name,phone,senze,pubkey,signature):
-       doc=self.database.find_one({"name":name})
-       if(doc):
-          #if user name is already taken
-          return False
-       else:
-          #The system support public key based authentication.
-          #It saves public key
-          user = {"name":name,"phone":phone,"senze":senze,"pubkey":pubkey,"signature":signature}
-          post_id = self.database.insert(user)
-          return True
-
-
- 
+    
    def putUser(self,name,phone,email,key,type):
        #admin user is root. He can create main accounts.
        #The other users can create sub accounts.
@@ -156,8 +142,8 @@ class myUser:
   
    def loadPublicKey(self):
        if(self.usrDoc):
-          if 'pubkey' in self.usrDoc:
-             s=self.usrDoc['pubkey']
+          if 'publickey' in self.usrDoc:
+             s=self.usrDoc['publickey']
              return str(s)
        return ''
  

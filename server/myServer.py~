@@ -25,64 +25,108 @@ deletedConnections={}
 serverName="mysensors"
 pubkey=""
 #Database connection will be kept here
-usrDatabase=""
+database=""
 
 # Here's a UDP version of the simplest possible SENZE protocol
 class mySensorUDPServer(DatagramProtocol):
    
-   def createUser(self,sender,signature,sensors,data,address):
-       global usrDatabase
+   def createUser(self,query,address):
+       global database
        global serverName
-    
-       usr=myUser(usrDatabase,serverName)
+
+       usr=myUser(database,serverName)
        cry=myCrypto(serverName)
-      
-       pub='';p='';
-       if 'pubkey' in data: pub=data['pubkey']
-       if 'phone' in data: p= data['phone']
-       status=usr.putUser("",p,signature,pub,'pubkey')
-       st="DATA #msg "   
+       data=query.getData()
+       pubkey='';phone='';
+       if 'pubkey' in data: pubkey=data['pubkey']
+       if 'phone' in data: phone= data['phone']
+       if cry.verifySENZE(query,pubkey):
+          status=usr.addUser(query.getSender(),phone,query.getSENZE(),pubkey,query.getSignature())
+       st="DATA #msg "
        if status:
              st+='UserCreated'
        else:
              st+='UserCreationFailed'
        self.transport.write(st,address)
 
+   def shareSensors(self,query):
+       global connections
+       global database
+       """
+        In order to start the sharing process both users need to online.
+        For a instance, if query comes 'SHARE #tp @user2' from the user1.
+        First we need to verify that user2 is online.
+        Then mysensors adds "user2" to the sensor dictionary at user1's document and
+        sensor name to the "user1" dictionary at user2's document.
+        Finally it delivers the message SHARE #tp @user2 ^user1 to user2.
+        Otherwise it sends DATA #msg Shared to user1.
+       """
+       usr=myUser(database,query.getSender())
+       recipients=query.getUsers()
+       for recipient in recipients:
+           if recipient in connections.keys():
+              usr.share(recipient,query.getSensors())
+              forward=connections[recipient]
+              self.transport.write(query.getFULLSENZE(),forward)
+
+
+   def unshareSensors(self,query):
+       global connections
+       global database
+       usr=myUser(database,query.getSender())
+       recipients=query.getUsers()
+       for recipient in recipients:
+           if recipient in connections.keys():
+              usr.unShare(recipient,query.getSensors())
+              forward=connections[recipient]
+              self.transport.write(query.getFULLSENZE(),forward)
+
 
    def datagramReceived(self, datagram, address):
        global serverName
        global usrDatabase
 
-       parser=myParser(datagram)
-       recipients=parser.getUsers()
-       sender=parser.getSender()
-       signature=parser.getSignature()
-       data=parser.getData()
-       sensors=parser.getSensors()
-       cmd=parser.getCmd()
-       
+       query=myParser(datagram)
+       recipients=query.getUsers()
+       sender=query.getSender()
+       signature=query.getSignature()
+       data=query.getData()
+       sensors=query.getSensors()
+       cmd=query.getCmd()
+       validQuery=False  
        cry=myCrypto(serverName) 
-       sen=myUser(usrDatabase,sender)
-         
-       if cmd=="SHARE":
-          if "pubkey" in sensors and serverName in recipients:
-             pubkey=data['pubkey']
-             if cry.verifySENZE(pubkey,parser.getSENZE(),parser.getSignature()):
-                #Create a new account 
-                self.createUser(sender,signature,sensors,data,address) 
-       elif cmd=="GET":
-            pubkey=sen.loadPublicKey()
-            if pubkey !="":
-               if cry.verifySENZE(pubkey,parser.getSENZE(),parser.getSignature()):
-            print datagram
+       if cmd=="SHARE" and "pubkey" in sensors and serverName in recipients:
+          #Create a new account 
+          self.createUser(query,address)
        else:
-            datagram="BAD COMMAND"
+          senderDB=myUser(database,sender)
+          pubkey=senderDB.loadPublicKey()
+          if pubkey !="":
+             if cry.verifySENZE(query,pubkey):
+                validQuery=True
+
+       if validQuery:
+            connections[sender]=address
+            if cmd=="SHARE":
+                self.shareSensors(query)
+            elif cmd=="UNSHARE":
+                self.unshareSensors(query)
+
+            '''
+            for recipient in recipients:
+                if recipient in connections.keys():
+                   forward=connections[recipient]
+                 self.transport.write(datagram,forward)
+           '''
+       else:
+            datagram="Bad query"
+            self.transport.write(datagram, address)
 
        #if address[0] not in self.clients:
        #    self.clients[address[0]]=address[1]
        #print self.clients
-       print address[1]
-       self.transport.write(datagram, address)
+       #print address[1]
+       #self.transport.write(datagram, address)
 
 def init():
 #If .servername is not there we will read the server name from keyboard
@@ -118,7 +162,7 @@ def init():
 
 
 def main():
-    global usrDatabase
+    global database
     global port
 
     #Create connection to the Mongo DB
@@ -128,7 +172,7 @@ def main():
        db = client[serverName]
        collection = db['users']
        # Access the user collection from the database
-       usrDatabase = db.users
+       database = db.users
     except:
        print "ERRER: Cannot aaccess the Mongo database."
        raise SystemExit
