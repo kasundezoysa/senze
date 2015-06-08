@@ -1,7 +1,24 @@
 #!/usr/bin/env python
-
-# Copyright (c) Twisted Matrix Laboratories.
-# See LICENSE for details.
+###############################################################################
+##
+##  My Sensor UDP Server v1.0
+##  @Copyright 2014 MySensors Research Project
+##  SCoRe Lab (www.scorelab.org)
+##  University of Colombo School of Computing
+##
+##  Licensed under the Apache License, Version 2.0 (the "License");
+##  you may not use this file except in compliance with the License.
+##  You may obtain a copy of the License at
+##
+##      http://www.apache.org/licenses/LICENSE-2.0
+##
+##  Unless required by applicable law or agreed to in writing, software
+##  distributed under the License is distributed on an "AS IS" BASIS,
+##  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+##  See the License for the specific language governing permissions and
+##  limitations under the License.
+##
+###############################################################################
 
 from twisted.internet.protocol import DatagramProtocol
 from twisted.internet import reactor
@@ -14,25 +31,28 @@ from myParser import *
 from myUser import *
 from myCrypto import *
 
-#Server port number should be assigned here
+#UDP Server port number should be assigned here
 port=9090
 
-#manage connection in a dictionary, we save connection along with user/device name
+# At present we manage connection in a dictionary. 
+# We save connection IP and port along with user/device name
 connections={}
-deletedConnections={}
 
-#These variables will be used to keep the server name and its public key
+#These global variables will be used to keep the server name and its public key
 serverName="mysensors"
-pubkey=""
-#Database connection will be kept here
+serverPubkey=""
+#Database connection will be kept in this variable
 database=""
 
 # Here's a UDP version of the simplest possible SENZE protocol
 class mySensorUDPServer(DatagramProtocol):
    
+   # This methid will create a new user at the server based on the following SENZE
+   # SHARE #pubkey PEM_PUBKEY @mysensors #time timeOfRequest ^userName signatureOfTheSenze
    def createUser(self,query,address):
        global database
        global serverName
+       global serverPubkey
 
        usr=myUser(database,serverName)
        cry=myCrypto(serverName)
@@ -42,24 +62,41 @@ class mySensorUDPServer(DatagramProtocol):
        if 'phone' in data: phone= data['phone']
        if cry.verifySENZE(query,pubkey):
           status=usr.addUser(query.getSender(),phone,query.getSENZE(),pubkey,query.getSignature())
+       if status:
+             st='DATA #msg UserCreated #pubkey %s ' %(serverPubkey)
+       else:
+             st='DATA #msg UserCreationFailed'
+       senze=cry.signSENZE(st)
+       self.transport.write(senze,address)
+
+
+   # This methid will remove the user at the server based on the following SENZE
+   # UNSHARE #pubkey @mysensors #time timeOfRequest ^userName signatureOfTheSenze
+   def removeUser(self,sender,pubkey,address):
+       global database
+       global serverName
+
+       usr=myUser(database,serverName)
+       cry=myCrypto(serverName)
+       status=usr.delUser(sender,pubkey)       
        st="DATA #msg "
        if status:
-             st+='UserCreated'
+             st+='UserRemoved'
        else:
-             st+='UserCreationFailed'
-       self.transport.write(st,address)
+             st+='UserCannotRemoved'
+       senze=cry.signSENZE(st)
+       self.transport.write(senze,address)
+
 
    def shareSensors(self,query):
        global connections
        global database
        """
-        In order to start the sharing process both users need to online.
-        For a instance, if query comes 'SHARE #tp @user2' from the user1.
-        First we need to verify that user2 is online.
+        If query comes 'SHARE #tp @user2 #time t1 ^user1 siganture' from the user1.
+        First we need to verify that user2 is available.
         Then mysensors adds "user2" to the sensor dictionary at user1's document and
         sensor name to the "user1" dictionary at user2's document.
-        Finally it delivers the message SHARE #tp @user2 ^user1 to user2.
-        Otherwise it sends DATA #msg Shared to user1.
+        Finally it delivers the message SHARE #tp @user2 #time t1 ^user1 signature to user2.
        """
        usr=myUser(database,query.getSender())
        recipients=query.getUsers()
@@ -153,14 +190,26 @@ class mySensorUDPServer(DatagramProtocol):
        data=query.getData()
        sensors=query.getSensors()
        cmd=query.getCmd()
+
        validQuery=False  
        cry=myCrypto(serverName) 
+       senderDB=myUser(database,sender)
+       pubkey=senderDB.loadPublicKey()
+    
        if cmd=="SHARE" and "pubkey" in sensors and serverName in recipients:
           #Create a new account 
           self.createUser(query,address)
+          validQuery=True
+
+       elif cmd=="UNSHARE" and "pubkey" in sensors and serverName in recipients:
+          #Remove the account
+          status=False
+          if pubkey !="":
+             if cry.verifySENZE(query,pubkey):
+                status=self.removeUser(sender,pubkey,address)
+          validQuery=True
+
        else:
-          senderDB=myUser(database,sender)
-          pubkey=senderDB.loadPublicKey()
           if pubkey !="":
              if cry.verifySENZE(query,pubkey):
                 validQuery=True
@@ -179,7 +228,7 @@ class mySensorUDPServer(DatagramProtocol):
                 self.DATASenze(query)
 
        else:
-            datagram="Bad query"
+            datagram="SignatureVerificationFailed"
             self.transport.write(datagram, address)
 
        #if address[0] not in self.clients:
@@ -189,8 +238,8 @@ class mySensorUDPServer(DatagramProtocol):
        #self.transport.write(datagram, address)
 
 def init():
-#If .servername is not there we will read the server name from keyboard
-#else we will get it from .servername file
+# If .servername is not there we will read the server name from keyboard
+# else we will get it from .servername file
    try:
       if not os.path.isfile(".servername"):
          serverName=raw_input("Enter the server name:")
@@ -205,17 +254,17 @@ def init():
       print "ERRER: Cannot access the server name file."
       raise SystemExit
 
-   #Here we will generate public and private keys for the server
-   #These keys will be used to authentication
-   #If keys are not available yet
-   global pubkey
+   # Here we will generate public and private keys for the server
+   # These keys will be used to authentication
+   # If keys are not available yet
+   global serverPubkey
    try:
       cry=myCrypto(serverName) 
       if not os.path.isfile(cry.pubKeyLoc):
          # Generate or loads an RSA keypair with an exponent of 65537 in PEM format
          # Private key and public key was saved in the .servernamePriveKey and .servernamePubKey files
          cry.generateRSA(1024)
-      pubkey=cry.loadRSAPubKey()
+      serverPubkey=cry.loadRSAPubKey()
    except:
       print "ERRER: Cannot genereate private/public keys for the server."
       raise SystemExit
@@ -242,7 +291,7 @@ def main():
 
 if __name__ == '__main__':
     init()
-    #print pubkey
+    print serverPubkey
     main()
 
 

@@ -28,6 +28,7 @@ port=9090
 state="INITIAL"
 device=""
 server="mysensors"
+serverPubKey=""
 
 class mySensorDatagramProtocol(DatagramProtocol):
   
@@ -66,6 +67,7 @@ class mySensorDatagramProtocol(DatagramProtocol):
         self.transport.write(senze)
     
     def datagramReceived(self, datagram, host):
+        global device
         print 'Datagram received: ', repr(datagram)
         
         parser=myParser(datagram)
@@ -79,9 +81,13 @@ class mySensorDatagramProtocol(DatagramProtocol):
         
         if cmd=="DATA":
            if 'msg' in sensors and 'UserCreated' in data['msg']:
-               #Creating the .devicename file and store the device name and PIN  
+               # Creating the .devicename file and store the device name 
+               # public key of mysensor server  
                f=open(".devicename",'w')
                f.write(device+'\n')
+               if 'pubkey' in sensors: 
+                   pubkey=data['pubkey']
+                   f.write(pubkey+'\n')
                f.close()
                print device+ " was created at the server."
                print "You should execute the program again."
@@ -94,6 +100,17 @@ class mySensorDatagramProtocol(DatagramProtocol):
               print "The system halted!"
               reactor.stop()
 
+           elif 'msg' in sensors and 'UserRemoved' in data['msg']:
+              cry=myCrypto(device)
+              try:
+                 os.remove(".devicename")
+                 os.remove(cry.pubKeyLoc)
+                 os.remove(cry.privKeyLoc)
+                 print "Device was successfully removed"
+              except OSError:
+                 print "Cannot remove user configuration files"
+              reactor.stop()
+
            elif 'pubkey' in sensors:
                 print datagram
           
@@ -103,6 +120,7 @@ def init():
     #cam=myCamDriver()
     global device
     global pubkey
+    global serverPubkey
     global state
     #If .device name is not there, we will read the device name from keyboard
     #else we will get it from .devicename file
@@ -112,9 +130,11 @@ def init():
          # Account need to be created at the server
          state='INITIAL'
       else:
-         #The device name will be read form the .devicename file
+         #The device name and server public key will be read form the .devicename file
          f=open(".devicename","r")
          device = f.readline().rstrip("\n")
+         serverPubkey=f.readline().rstrip("\n")
+         print serverPubkey
          state='READY'
     except:
       print "ERRER: Cannot access the device name file."

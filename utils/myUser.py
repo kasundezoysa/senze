@@ -61,61 +61,18 @@ class myUser:
           post_id = self.database.insert(user)
           return True
 
-
- 
-   def putUser(self,name,phone,email,key,type):
-       #admin user is root. He can create main accounts.
-       #The other users can create sub accounts.
-       #Then the user name become main_account_name.subaccount_name
-       uname=name
-       if self.name!= "": 
-          uname='%s.%s' %(self.name,name)
-          owner=self.name
-       else:
-          owner="root"
-       
-       doc=self.database.find_one({"name":uname})
-       if(doc):
-          #if user name is already taken
-          return False
-       else:
-          #The system support simple pin, hash or public key based authentication.
-          if type=="pubkey":
-             #It saves public key
-             user = {"name":uname,"phone":phone,"email":email,"publickey":key,"owner":owner}
-          elif type=="hkey":
-              user = {"name":uname,"phone":phone,"email":email,"hkey":key,"owner":owner}
-          else:
-             #It saves SHA1 hash of the PIN
-             s = hashlib.sha1()
-             s.update(key)
-             key=b64encode(s.digest())  
-             user = {"name":uname,"phone":phone,"email":email,"skey":key,"owner":owner}
-          post_id = self.database.insert(user)
-          return True
-
-   def delUser(self,name,phone,key,pubkey):
-       #Owners can login and delete their accounts.
-       #Main accounts (owner=root) cannot delete right now.
-       uname=name
-       if self.name!= "":
-          uname='%s.%s' %(self.name,name)
-          owner=self.name
-       else:
-           owner="root"
-       
-       doc=self.database.find_one({"name":uname})
-       #print uname
+   def delUser(self,name,pubkey):
+       #Owners can remove himself
+       doc=self.database.find_one({"name":name,"pubkey":pubkey})
+       print name
+       print pubkey
        if not (doc):
           #if the given user is not available
           return False
        else:
-          if(self.usrDoc):
-             post_id=self.database.remove({"name":uname,"owner":owner})
-             return True
-          else:
-             return False
-   
+          post_id=self.database.remove({"name":name,"pubkey":pubkey})
+          return True
+  
    def findUsers(self,u):
        friends=[]
        users=u.split(',')
