@@ -179,26 +179,29 @@ class myCrypto:
     return: Base64 encoded public key
     '''
     publicKey=""
+    #if os.path.isfile(pubKeyLoc):
     publicKey = open(self.pubKeyLoc,"r").read() 
     return b64encode(publicKey)
+    #else:
+    #   return publicKey
 
-  def saveRSAPubKey(self,publicKeyLoc,pubkey):
+  def saveRSAPubKey(self,pubkey):
     '''
     Saves a public key 
-    param: public_key_loc 
     param: public key
     '''
     try:
-       f=open(publicKeyLoc,'w')
+       #if not os.path.isfile(publicKeyLoc):
+       f=open(self.pubKeyLoc,'w')
        f.write(b64decode(pubkey))
        f.close()
        return True
     except:
-         return False
+       return False
 
   def encryptRSA(self,message):
     '''
-    param: message String to be encrypted
+    param: message String t o be encrypted
     return base64 encoded encrypted string
     '''
     #h = SHA.new(message)

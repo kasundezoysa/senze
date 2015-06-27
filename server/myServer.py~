@@ -47,7 +47,7 @@ database=""
 # Here's a UDP version of the simplest possible SENZE protocol
 class mySensorUDPServer(DatagramProtocol):
    
-   # This methid will create a new user at the server based on the following SENZE
+   # This method will create a new user at the server based on the following SENZE
    # SHARE #pubkey PEM_PUBKEY @mysensors #time timeOfRequest ^userName signatureOfTheSenze
    def createUser(self,query,address):
        global database
@@ -91,6 +91,7 @@ class mySensorUDPServer(DatagramProtocol):
    def shareSensors(self,query):
        global connections
        global database
+       global serverName
        """
         If query comes 'SHARE #tp @user2 #time t1 ^user1 siganture' from the user1.
         First we need to verify that user2 is available.
@@ -137,8 +138,9 @@ class mySensorUDPServer(DatagramProtocol):
                if pubkey!='' :
                   if sender in connections.keys():
                      backward=connections[sender]    
-                     senze='DATA #pubkey %s' %(pubkey)
-                     print "*******************"
+                     senze='DATA #pubkey %s @%s' %(pubkey,recipient)
+                     cry=myCrypto(serverName) 
+                     senze=cry.signSENZE(senze)
                      self.transport.write(senze,backward)
            #Otherwise GET message will forward to the recipients     
            else:
@@ -199,12 +201,16 @@ class mySensorUDPServer(DatagramProtocol):
        if cmd=="SHARE" and "pubkey" in sensors and serverName in recipients:
           #Create a new account 
           self.createUser(query,address)
+          validQuery=True
+
        elif cmd=="UNSHARE" and "pubkey" in sensors and serverName in recipients:
           #Remove the account
           status=False
           if pubkey !="":
              if cry.verifySENZE(query,pubkey):
-                status=self.removeUser(sender,pubkey,address) 
+                status=self.removeUser(sender,pubkey,address)
+          validQuery=True
+
        else:
           if pubkey !="":
              if cry.verifySENZE(query,pubkey):
@@ -226,12 +232,6 @@ class mySensorUDPServer(DatagramProtocol):
        else:
             datagram="SignatureVerificationFailed"
             self.transport.write(datagram, address)
-
-       #if address[0] not in self.clients:
-       #    self.clients[address[0]]=address[1]
-       #print self.clients
-       #print address[1]
-       #self.transport.write(datagram, address)
 
 def init():
 # If .servername is not there we will read the server name from keyboard

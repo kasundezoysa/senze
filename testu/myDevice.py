@@ -1,7 +1,25 @@
 #!/usr/bin/env python
 
-# Copyright (c) Twisted Matrix Laboratories.
-# See LICENSE for details.
+###############################################################################
+##
+##  My Sensor UDP Client v1.0
+##  @Copyright 2014 MySensors Research Project
+##  SCoRe Lab (www.scorelab.org)
+##  University of Colombo School of Computing
+##
+##  Licensed under the Apache License, Version 2.0 (the "License");
+##  you may not use this file except in compliance with the License.
+##  You may obtain a copy of the License at
+##
+##      http://www.apache.org/licenses/LICENSE-2.0
+##
+##  Unless required by applicable law or agreed to in writing, software
+##  distributed under the License is distributed on an "AS IS" BASIS,
+##  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+##  See the License for the specific language governing permissions and
+##  limitations under the License.
+##
+###############################################################################
 
 
 from twisted.internet.protocol import DatagramProtocol
@@ -38,6 +56,19 @@ class mySensorDatagramProtocol(DatagramProtocol):
         #self._reactor=reactor
         #self.ip=reactor.resolve(host)
 
+    #Save base64 encoded jpg photo in the given file
+    def savePhoto(self,b64photo,filename):
+        f = open(filename,"w")
+        if b64photo:
+           data = b64decode(b64photo)
+           f.write(data) 
+        f.close()
+
+    #Show image
+    def showPhoto(self,filename):
+        image = Image.open(filename)
+        image.show()
+
     def startProtocol(self):
         self.transport.connect(self.ip,self.port)
         if state=='INITIAL':
@@ -66,6 +97,128 @@ class mySensorDatagramProtocol(DatagramProtocol):
         print senze
         self.transport.write(senze)
     
+
+    #Senze response should be built as follows by calling the functions in the driver class
+    def sendDataSenze(self,sensors,data,recipient):
+       response='DATA'
+       device=myDriver()
+       for sensor in sensors:
+           #If temperature is requested
+           if "tp" == sensor:
+              response ='%s #tp %s' %(response,device.readTp())
+           #If time is requested
+           elif "time" == sensor:
+              response ='%s #time %s' %(response,device.readTime())
+           #If gps is requested 
+           elif "gps" == sensor:
+              response ='%s #gps %s' %(response,device.readGPS())
+           #If gpio is requested 
+           elif "gpio" in sensor:
+              m=re.search(r'\d+$',sensor)
+              pinnumber=int(m.group())
+              print pinnumber
+              response ='%s #gpio%s %s' %(response,pinnumber,device.readGPIO(port=pinnumber))
+           else:
+              response ='%s #%s NULL' %(response,sensor)
+        
+       response="%s @%s" %(response,recipient)
+       senze=cry.signSENZE(response)
+       self.transport.write(senze)
+        
+       #Data can be encrypted as follows
+       #cry=myCrypto(recipient)
+       #enc=cry.encryptRSA(response)
+       #response="DATA #cipher %s @%s" %(enc,recipient)
+       
+
+    #Handle the GPIO ports by calling the functions in the driver class
+    #If value is one, switch will be turned on, otherwise it will be turned off
+    def handlePUTSenze(self,sensors,data,recipient,value):
+       response='DATA'
+       device=myDriver()
+       for sensor in sensors:
+          #If GPIO operation is requested
+          if "gpio" in sensor:
+              pinnumber=0
+              #search for gpio pin number
+              m=re.search(r'\d+$',sensor)
+              if m :
+                 pinnumber=int(m.group())
+            
+              if pinnumber>0 and pinnumber<=16:
+                 if value==1: ans=device.handleON(port=pinnumber)
+                 else: ans=device.handleOFF(port=pinnumber)
+                 response='%s #gpio%s %s' %(response,pinnumber,ans)
+              else: 
+                 response='%s #gpio%d UnKnown' %(response,pinnumber)
+          else:
+              response='%s #%s UnKnown' %(response,sensor)
+          
+       response="%s @%s" %(response,recipient)
+       senze=cry.signSENZE(response)
+       self.transport.write(senze)
+
+
+    def handleServerResponse(self,senze):
+        sender=senze.getSender()
+        data=senze.getData()
+        sensors=senze.getSensors()
+        cmd=senze.getCmd()
+ 
+        if cmd=="DATA":
+           if 'msg' in sensors and 'UserRemoved' in data['msg']:
+              cry=myCrypto(device)
+              try:
+                 os.remove(".devicename")
+                 os.remove(cry.pubKeyLoc)
+                 os.remove(cry.privKeyLoc)
+                 print "Device was successfully removed"
+              except OSError:
+                 print "Cannot remove user configuration files"
+              reactor.stop()
+
+           elif 'pubkey' in sensors and data['pubkey']!="" and 'name' in sensors and data['name']!="":
+                 recipient=myCrypto(data['name'])
+                 if recipient.saveRSAPubKey(data['pubkey']):
+                    print "Public key=> "+data['pubkey']+" Saved."
+                 else:
+                    print "Error: Saving the public key."
+
+    def handleDeviceResponse(self,senze):
+        sender=senze.getSender()
+        data=senze.getData()
+        sensors=senze.getSensors()
+        cmd=senze.getCmd()
+ 
+        if cmd=="DATA":
+           for sensor in sensors:
+               print sensor+"=>"+data[sensor]
+       
+           if 'photo' in sensors:
+               try:
+                  self.savePhoto(data['photo'],"p1.jpg")
+                  thread.start_new_thread(self.showPhoto,("p1.jpg",))
+               except:
+                  print "Error: unable to show the photo"
+               #cam.savePhoto(data['photo'],"p1.jpg")
+   
+        elif cmd=="SHARE":
+           print "This should be implemented"
+
+        elif cmd=="UNSHAR":
+           print "This should be implemented"
+
+        elif cmd=="GET":
+           #If GET Senze was received. The device must handle it.
+           self.factory.reactor.callLater(1,self.sendDataSenze,sensors=sensors,data=data,recipient=sender)
+         
+        elif cmd=="PUT":
+           self.factory.reactor.callLater(1,self.handlePUTSenze,sensors=sensors,data=data,recipient=sender,value=1)
+         
+        else:
+           print "Unknown command"
+
+
     def datagramReceived(self, datagram, host):
         global device
         print 'Datagram received: ', repr(datagram)
@@ -78,42 +231,49 @@ class mySensorDatagramProtocol(DatagramProtocol):
         sensors=parser.getSensors()
         cmd=parser.getCmd()
        
-        
-        if cmd=="DATA":
-           if 'msg' in sensors and 'UserCreated' in data['msg']:
-               # Creating the .devicename file and store the device name 
-               # public key of mysensor server  
-               f=open(".devicename",'w')
-               f.write(device+'\n')
-               if 'pubkey' in sensors: 
-                   pubkey=data['pubkey']
-                   f.write(pubkey+'\n')
-               f.close()
-               print device+ " was created at the server."
-               print "You should execute the program again."
-               print "The system halted!"
-               reactor.stop()
+        validQuery=False  
+        cry=myCrypto(device)
+        if state=="READY":
+           if serverPubkey !="" and sender=="mysensors":
+              if cry.verifySENZE(parser,serverPubkey):
+                 self.handleServerResponse(parser)
+              else:
+                 print "SENZE Verification failed"
+           else:
+              if sender!="":
+                 recipient=myCrypto(sender)
+                 if os.path.isfile(recipient.pubKeyLoc):
+                    pub=recipient.loadRSAPubKey()
+                 else:
+                    pub=""
+                 if pub!="" and cry.verifySENZE(parser,pub):
+                    print "SENZE Verified"
+                    self.handleDeviceResponse(parser)
+                 else:
+                    print "SENZE Verification failed"
+               
+        else:
+           if cmd=="DATA":
+              if 'msg' in sensors and 'UserCreated' in data['msg']:
+                 # Creating the .devicename file and store the device name 
+                 # public key of mysensor server  
+                 f=open(".devicename",'w')
+                 f.write(device+'\n')
+                 if 'pubkey' in sensors: 
+                     pubkey=data['pubkey']
+                     f.write(pubkey+'\n')
+                 f.close()
+                 print device+ " was created at the server."
+                 print "You should execute the program again."
+                 print "The system halted!"
+                 reactor.stop()
 
-           elif 'msg' in sensors and 'UserCreationFailed' in data['msg']:
-              print "This user name may be already taken"
-              print "You can try it again with different username"
-              print "The system halted!"
-              reactor.stop()
-
-           elif 'msg' in sensors and 'UserRemoved' in data['msg']:
-              cry=myCrypto(device)
-              try:
-                 os.remove(".devicename")
-                 os.remove(cry.pubKeyLoc)
-                 os.remove(cry.privKeyLoc)
-                 print "Device was successfully removed"
-              except OSError:
-                 print "Cannot remove user configuration files"
-              reactor.stop()
-
-           elif 'pubkey' in sensors:
-                print datagram
-          
+              elif 'msg' in sensors and 'UserCreationFailed' in data['msg']:
+                 print "This user name may be already taken"
+                 print "You can try it again with different username"
+                 print "The system halted!"
+                 reactor.stop()
+            
          #self.sendDatagram()
 
 def init():
