@@ -21,10 +21,13 @@
 
 from random import randint
 import datetime
-import pygame
+#import pygame
 import pygame.camera
+from PIL import Image
 from pygame.locals import *
 from base64 import b64encode, b64decode 
+import thread
+import os.path
 
 
 class myCamDriver:
@@ -36,7 +39,7 @@ class myCamDriver:
       camlist = pygame.camera.list_cameras()
       print camlist
       if camlist:
-         self.cam = pygame.camera.Camera(camlist[0],(640,480))
+         self.cam = pygame.camera.Camera(camlist[0],(20,10))
 
    #Read the device time and return it           
    def readTime(self):
@@ -60,24 +63,35 @@ class myCamDriver:
          f.write(data) 
       f.close()
 
-   #Read it
-   def readPhoto(self):
+   #Read b64encode photo
+   def readPhotob64(self):
        if self.img:
           pygame.image.save(self.img,"tmp.jpg")
           photo = open("tmp.jpg","r").read()
           return b64encode(photo)
        return 0 
 
+   #Show image
+   def showPhoto(self,filename):
+       print" ******************"
+       w = 20
+       h = 10
+       size=(w,h)
+       screen = pygame.display.set_mode(size) 
+       img=pygame.image.load(filename) 
+       screen.blit(img,(0,0))
+       pygame.display.flip() # update the display
+       pygame.time.wait(2000)
+       #image = Image.open(filename)
+       #image.show()
+
 ''' 
 sen=myCamDriver()
 sen.takePhoto()
-photo=sen.readPhoto()
+photo=sen.readPhotob64()
 sen.savePhoto(photo,"p11.jpg")
-
 print photo
 pygame.time.wait(15)
-
-sen.takePhoto()
-photo=sen.readPhoto()
-sen.savePhoto(photo,"p22.jpg")
+#thread.start_new_thread(sen.showPhoto,("p11.jpg",))              
+sen.showPhoto("p11.jpg")
 '''

@@ -29,13 +29,14 @@ import datetime
 import socket
 import time
 import sys
+import thread
 import os.path
 lib_path = os.path.abspath('../utils')
 sys.path.append(lib_path)
 from myParser import *
 from myCrypto import *
-#from myDriver import *
-#from myCamDriver import *
+from myDriver import *
+from myCamDriver import *
 import re
 import hashlib
 #from PIL import Image
@@ -56,14 +57,22 @@ class mySensorDatagramProtocol(DatagramProtocol):
         #self._reactor=reactor
         #self.ip=reactor.resolve(host)
 
+    def readSenze(self):
+        while True:
+             response=raw_input("Enter your Senze:")
+             self.sendDatagram(response)
+
+
     def startProtocol(self):
         self.transport.connect(self.ip,self.port)
         if state=='INITIAL':
            #If system is at the initial state, it will send the device creation Senze
            self.register()
         else:
-           response=raw_input("Enter your Senze:")
-           self.sendDatagram(response)
+           #thread.start_new_thread(self.showPhoto,("p1.jpg",))
+           thread.start_new_thread(self.readSenze,()) 
+           #response=raw_input("Enter your Senze:")
+           #self.sendDatagram(response)
 
     def stopProtocol(self):
         #on disconnect
@@ -84,6 +93,77 @@ class mySensorDatagramProtocol(DatagramProtocol):
         print senze
         self.transport.write(senze)
     
+
+    #Senze response should be built as follows by calling the functions in the driver class
+    def sendDataSenze(self,sensors,data,recipient):
+       global device
+       response='DATA'
+       driver=myDriver()
+       for sensor in sensors:
+           #If temperature is requested
+           if "tp" == sensor:
+              response ='%s #tp %s' %(response,driver.readTp())
+           #If photo is requested
+           elif "photo" == sensor:
+              cam=myCamDriver()
+              cam.takePhoto()
+              photo=cam.readPhotob64()
+              print photo
+              response ='%s #photo %s' %(response,photo)
+           #If time is requested
+           elif "time" == sensor:
+              response ='%s #time %s' %(response,driver.readTime())
+           #If gps is requested 
+           elif "gps" == sensor:
+              response ='%s #gps %s' %(response,driver.readGPS())
+           #If gpio is requested 
+           elif "gpio" in sensor:
+              m=re.search(r'\d+$',sensor)
+              pinnumber=int(m.group())
+              print pinnumber
+              response ='%s #gpio%s %s' %(response,pinnumber,driver.readGPIO(port=pinnumber))
+           else:
+              response ='%s #%s NULL' %(response,sensor)
+       
+       cry=myCrypto(device)         
+       response="%s @%s" %(response,recipient)
+       senze=cry.signSENZE(response)
+       print senze
+       self.transport.write(senze)
+        
+       #Data can be encrypted as follows
+       #cry=myCrypto(recipient)
+       #enc=cry.encryptRSA(response)
+       #response="DATA #cipher %s @%s" %(enc,recipient)
+       
+
+    #Handle the GPIO ports by calling the functions in the driver class
+    def handlePUTSenze(self,sensors,data,recipient):
+       response='DATA'
+       device=myDriver()
+       for sensor in sensors:
+          #If GPIO operation is requested
+          if "gpio" in sensor:
+              pinnumber=0
+              #search for gpio pin number
+              m=re.search(r'\d+$',sensor)
+              if m :
+                 pinnumber=int(m.group())
+            
+              if pinnumber>0 and pinnumber<=16:
+                 if data[sensor]=="ON": ans=device.handleON(port=pinnumber)
+                 else: ans=device.handleOFF(port=pinnumber)
+                 response='%s #gpio%s %s' %(response,pinnumber,ans)
+              else: 
+                 response='%s #gpio%d UnKnown' %(response,pinnumber)
+          else:
+              response='%s #%s UnKnown' %(response,sensor)
+          
+       response="%s @%s" %(response,recipient)
+       senze=cry.signSENZE(response)
+       self.transport.write(senze)
+
+
     def handleServerResponse(self,senze):
         sender=senze.getSender()
         data=senze.getData()
@@ -108,6 +188,42 @@ class mySensorDatagramProtocol(DatagramProtocol):
                     print "Public key=> "+data['pubkey']+" Saved."
                  else:
                     print "Error: Saving the public key."
+
+    def handleDeviceResponse(self,senze):
+        sender=senze.getSender()
+        data=senze.getData()
+        sensors=senze.getSensors()
+        cmd=senze.getCmd()
+ 
+        if cmd=="DATA":
+           for sensor in sensors:
+               print sensor+"=>"+data[sensor]
+       
+           if 'photo' in sensors:
+               #try:
+                   cam=myCamDriver()
+                   cam.savePhoto(data['photo'],"p1.jpg")
+                   #cam.showPhoto("p1.jpg")
+                   #self.savePhoto(data['photo'],"p1.jpg")
+                   thread.start_new_thread(cam.showPhoto,("p1.jpg",))
+               #except:
+               #    print "Error: unable to show the photo"
+               #cam.savePhoto(data['photo'],"p1.jpg")
+   
+        elif cmd=="SHARE":
+           print "This should be implemented"
+
+        elif cmd=="UNSHAR":
+           print "This should be implemented"
+
+        elif cmd=="GET":
+           #If GET Senze was received. The device must handle it.
+           reactor.callLater(1,self.sendDataSenze,sensors=sensors,data=data,recipient=sender) 
+        elif cmd=="PUT":
+           reactor.callLater(1,self.handlePUTSenze,sensors=sensors,data=data,recipient=sender)
+        else:
+           print "Unknown command"
+
 
     def datagramReceived(self, datagram, host):
         global device
@@ -138,6 +254,7 @@ class mySensorDatagramProtocol(DatagramProtocol):
                     pub=""
                  if pub!="" and cry.verifySENZE(parser,pub):
                     print "SENZE Verified"
+                    self.handleDeviceResponse(parser)
                  else:
                     print "SENZE Verification failed"
                

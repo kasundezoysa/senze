@@ -93,11 +93,10 @@ class myDriver:
 
 
 
-'''
 sen=myDriver()
 print sen.handleON(1)
 print sen.handleOFF(1)
 print sen.readTp()
 print sen.readGPS()
 print sen.readTime()
-'''
+
