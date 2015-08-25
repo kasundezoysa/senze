@@ -41,8 +41,8 @@ import re
 import hashlib
 #from PIL import Image
 
-host='udp.mysensors.info'
-#host='localhost'
+#host='connect.mysensors.info'
+host='localhost'
 port=9090
 state="INITIAL"
 device=""
@@ -203,9 +203,9 @@ class mySensorDatagramProtocol(DatagramProtocol):
                #try:
                    cam=myCamDriver()
                    cam.savePhoto(data['photo'],"p1.jpg")
-                   #cam.showPhoto("p1.jpg")
+                   cam.showPhoto("p1.jpg")
                    #self.savePhoto(data['photo'],"p1.jpg")
-                   thread.start_new_thread(cam.showPhoto,("p1.jpg",))
+                   #thread.start_new_thread(self.showPhoto,("p1.jpg",))
                #except:
                #    print "Error: unable to show the photo"
                #cam.savePhoto(data['photo'],"p1.jpg")

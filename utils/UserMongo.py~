@@ -214,7 +214,7 @@ class User:
        if not (self.usrDoc): return False
        return self.database.find().count() 
    
-'''
+
 #Create connection to the Mongo DB
 client = MongoClient('localhost', 27017)
 #Creating the database
@@ -231,4 +231,3 @@ rep=usr.loadData('lat')
 pub=usr.loadPublicKey()
 print pub
 print rep
-'''
