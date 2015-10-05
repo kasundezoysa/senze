@@ -230,8 +230,24 @@ class mySensorUDPServer(DatagramProtocol):
                 self.DATASenze(query)
 
        else:
-            datagram="SignatureVerificationFailed"
-            self.transport.write(datagram, address)
+            senze="DATA #msg SignatureVerificationFailed"
+            senze=cry.signSENZE(senze)
+            self.transport.write(senze, address)
+
+   #Let's send a ping to keep open the port
+   def sendPing(self,delay):
+       global connections
+       global database
+       for recipient in connections:
+           forward=connections[recipient]
+           self.transport.write("PING",forward)
+       reactor.callLater(delay,self.sendPing,delay=delay)
+
+
+   #This function is called when we start the protocol
+   def startProtocol(self):
+       self.sendPing(15)
+   
 
 def init():
 # If .servername is not there we will read the server name from keyboard

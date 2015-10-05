@@ -41,8 +41,8 @@ import re
 import hashlib
 #from PIL import Image
 
-host='udp.mysensors.info'
-#host='localhost'
+#host='udp.mysensors.info'
+host='localhost'
 port=9090
 state="INITIAL"
 device=""

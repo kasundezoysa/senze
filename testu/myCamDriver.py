@@ -39,7 +39,7 @@ class myCamDriver:
       camlist = pygame.camera.list_cameras()
       print camlist
       if camlist:
-         self.cam = pygame.camera.Camera(camlist[0],(20,10))
+         self.cam = pygame.camera.Camera(camlist[0],(160,120))
 
    #Read the device time and return it           
    def readTime(self):
@@ -85,7 +85,7 @@ class myCamDriver:
        #image = Image.open(filename)
        #image.show()
 
-''' 
+'''
 sen=myCamDriver()
 sen.takePhoto()
 photo=sen.readPhotob64()

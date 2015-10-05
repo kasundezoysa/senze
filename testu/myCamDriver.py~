@@ -39,7 +39,7 @@ class myCamDriver:
       camlist = pygame.camera.list_cameras()
       print camlist
       if camlist:
-         self.cam = pygame.camera.Camera(camlist[0],(20,10))
+         self.cam = pygame.camera.Camera(camlist[0],(240,120))
 
    #Read the device time and return it           
    def readTime(self):
@@ -74,8 +74,8 @@ class myCamDriver:
    #Show image
    def showPhoto(self,filename):
        print" ******************"
-       w = 640
-       h = 480
+       w = 20
+       h = 10
        size=(w,h)
        screen = pygame.display.set_mode(size) 
        img=pygame.image.load(filename) 
@@ -85,7 +85,7 @@ class myCamDriver:
        #image = Image.open(filename)
        #image.show()
 
-''' 
+'''
 sen=myCamDriver()
 sen.takePhoto()
 photo=sen.readPhotob64()
