@@ -1,0 +1,34 @@
+
+-----------------------
+Secure SENZE Protocool
+-----------------------
+
+1. A user who wants to share his location should first obtain
+the bulic key of the recipient.
+GET #pubkey @u2 #time t1 ^u1 Signature
+Mysensor server delivers the public key as follows
+DATA #pubkey PublicKeyOfu2 #time t2 ^mysensors Signature
+(If u2 is not esixts, public key will be not present in the SENZE)
+
+2. The user should share the location (#lat, #lon sensors)
+and the symmetric key k1(Encrypted with the public key of u2)
+to the recipient.  
+SHARE #lat #lon #key E(k1) #time t3 @u2 ^u1 Signature
+Recipient should reply to it as follows
+SHARE #msg OK #time t4 @u1 ^u2 Signature
+(In absense of the above SENZE, sender should resend it SHARE SENZE)
+
+3. The recipient should request the location by sending the following SENZE
+GET #lat #lon @u1 #time t5 ^u2 Signature
+The sender should response it as follows. 
+Locations are encrtped with key k1.
+DATA #lat E(x) #lon E(y) #time t6  ^u1 Signature
+(Upon received this data SENZE, recipient should decrypt it
+and display it on the map.)
+
+4 (Optional Step)  At any time, 
+recipient can request a new security key as follows
+GET #key @u1 #time t7 ^u2 Signatue
+DATA #key E(k2) @u2 #time t8 ^u1 Signature
+
+
