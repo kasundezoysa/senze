@@ -41,14 +41,13 @@ import re
 import hashlib
 #from PIL import Image
 
-#host='udp.mysensors.info'
-host='localhost'
+host='udp.mysensors.info'
+#host='localhost'
 port=9090
 state="INITIAL"
 device=""
 server="mysensors"
 serverPubKey=""
-aesKeys={}
 
 class mySensorDatagramProtocol(DatagramProtocol):
   
@@ -98,29 +97,12 @@ class mySensorDatagramProtocol(DatagramProtocol):
     #Senze response should be built as follows by calling the functions in the driver class
     def sendDataSenze(self,sensors,data,recipient):
        global device
-       global aesKeys
-
        response='DATA'
        driver=myDriver()
-       cry=myCrypto(device)         
-
        for sensor in sensors:
            #If temperature is requested
            if "tp" == sensor:
               response ='%s #tp %s' %(response,driver.readTp())
-
-           #If key is requested
-	   if "key" == sensor:
-           #If Generate AES Key
-             aeskey=""         
-             if cry.generateAES(driver.readTime()):
-                aeskey=cry.key
-                aesKeys[recipient]=aeskey
-                #AES key is encrypted by the recipient public key
-                rep=myCrypto(recipient)
-                encKey=rep.encryptRSA(b64encode(aeskey))
-             response ='%s #key %s' %(response,encKey)
-
            #If photo is requested
            elif "photo" == sensor:
               cam=myCamDriver()
@@ -131,18 +113,9 @@ class mySensorDatagramProtocol(DatagramProtocol):
            #If time is requested
            elif "time" == sensor:
               response ='%s #time %s' %(response,driver.readTime())
-
            #If gps is requested 
            elif "gps" == sensor:
-              #if aes key is available, encrypt the data
-              gpsData='%s' %(driver.readGPS())
-              if recipient in aesKeys:
-                 rep=myCrypto(recipient)
-                 rep.key=aesKeys[recipient]
-                 gpsData=rep.encrypt(gpsData)
-                 print rep.decrypt(gpsData)
-              response ='%s #gps %s' %(response,gpsData)
-
+              response ='%s #gps %s' %(response,driver.readGPS())
            #If gpio is requested 
            elif "gpio" in sensor:
               m=re.search(r'\d+$',sensor)
@@ -152,6 +125,7 @@ class mySensorDatagramProtocol(DatagramProtocol):
            else:
               response ='%s #%s NULL' %(response,sensor)
        
+       cry=myCrypto(device)         
        response="%s @%s" %(response,recipient)
        senze=cry.signSENZE(response)
        print senze
@@ -216,8 +190,6 @@ class mySensorDatagramProtocol(DatagramProtocol):
                     print "Error: Saving the public key."
 
     def handleDeviceResponse(self,senze):
-        global device
-        global aesKeys
         sender=senze.getSender()
         data=senze.getData()
         sensors=senze.getSensors()
@@ -225,8 +197,7 @@ class mySensorDatagramProtocol(DatagramProtocol):
  
         if cmd=="DATA":
            for sensor in sensors:
-               if sensor in data.keys():
-                  print sensor+"=>"+data[sensor]
+               print sensor+"=>"+data[sensor]
        
            if 'photo' in sensors:
                #try:
@@ -238,23 +209,7 @@ class mySensorDatagramProtocol(DatagramProtocol):
                #except:
                #    print "Error: unable to show the photo"
                #cam.savePhoto(data['photo'],"p1.jpg")
-
-           #Received and saved the AES key
-           elif 'key' in sensors and data['key']!="":
-                #Key need to be decrypted by using the private key
-                cry=myCrypto(device)
-                dec=cry.decryptRSA(data['key'])
-        	aesKeys[sender]=b64decode(dec)
-                
-           #decrypt and show the gps data
-           elif 'gps' in sensors and data['gps']!="":
-                gpsData=data['gps']
-                if sender in aesKeys:
-                   rep=myCrypto(sender)
-                   rep.key=aesKeys[sender]
-                   gpsData=rep.decrypt(gpsData)
-                print "GPS=>"+gpsData
-
+   
         elif cmd=="SHARE":
            print "This should be implemented"
 

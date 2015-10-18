@@ -24,6 +24,7 @@ from twisted.internet.protocol import DatagramProtocol
 from twisted.internet import reactor
 import sys
 import os.path
+import time
 
 lib_path = os.path.abspath('../utils')
 sys.path.append(lib_path)
@@ -37,6 +38,7 @@ port=9090
 # At present we manage connection in a dictionary. 
 # We save connection IP and port along with user/device name
 connections={}
+connectionsTime={}
 
 #These global variables will be used to keep the server name and its public key
 serverName="mysensors"
@@ -218,6 +220,7 @@ class mySensorUDPServer(DatagramProtocol):
 
        if validQuery:
             connections[sender]=address
+            connectionsTime[sender]=time.time()
             if cmd=="SHARE":
                 self.shareSensors(query)
             elif cmd=="UNSHARE":
@@ -238,15 +241,24 @@ class mySensorUDPServer(DatagramProtocol):
    def sendPing(self,delay):
        global connections
        global database
+       #print connections
        for recipient in connections:
            forward=connections[recipient]
-           self.transport.write("PING",forward)
+           timeGap=time.time()-connectionsTime[recipient]
+           #print timeGap
+           #If there are no activities in an hour, let's close the connection
+           if (timeGap<3600):
+              self.transport.write("PING",forward)
+           else:
+              connections[recipient]=0
+           #   connectionsTime.pop(recipient,None)
        reactor.callLater(delay,self.sendPing,delay=delay)
 
 
-   #This function is called when we start the protocl
+   #This function is called when we start the protocol
    def startProtocol(self):
-       self.sendPing(5)
+   	print "## SERVER STARTED ##"
+        self.sendPing(60)
    
 
 def init():

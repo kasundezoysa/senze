@@ -1,7 +1,9 @@
-
------------------------
-Secure SENZE Protocool
------------------------
+-------------------------------
+Secure Location SENZE Protocool
+-------------------------------
+This protocol provides, authtication, integrity and non-repudiation
+of SENZE. 
+In addition to that it provides confidentiality of the data
 
 1. A user who wants to share his location should first obtain
 the bulic key of the recipient.
@@ -30,5 +32,4 @@ and display it on the map.)
 recipient can request a new security key as follows
 GET #key @u1 #time t7 ^u2 Signatue
 DATA #key E(k2) @u2 #time t8 ^u1 Signature
-
 

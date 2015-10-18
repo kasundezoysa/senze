@@ -36,7 +36,7 @@ class myCrypto:
   pubKeyLoc=""
   privKeyLoc=""
   key=""
-  bs=""
+  bs=32
   
   def __init__(self,name):
       self.user=name
@@ -179,9 +179,9 @@ class myCrypto:
     return: Base64 encoded public key
     '''
     publicKey=""
-    if os.path.isfile(pubKeyLoc):
-       publicKey = open(self.pubKeyLoc,"r").read() 
-       return b64encode(publicKey)
+    #if os.path.isfile(pubKeyLoc):
+    publicKey = open(self.pubKeyLoc,"r").read() 
+    return b64encode(publicKey)
     #else:
     #   return publicKey
 
@@ -209,7 +209,8 @@ class myCrypto:
     rsakey = RSA.importKey(key)
 #    rsakey = PKCS1_v1_5.new(rsakey)
     rsakey = PKCS1_OAEP.new(rsakey)
-    encrypted = rsakey.encrypt(b64encode(message))
+    #encrypted = rsakey.encrypt(b64encode(message))
+    encrypted = rsakey.encrypt(message)
     return b64encode(encrypted)
     #return encrypted.encode('base64')
 
@@ -230,7 +231,8 @@ class myCrypto:
     '''
     cipher = PKCS1_OAEP.new(rsakey)
     message = cipher.decrypt(b64decode(package))
-    return b64decode(message)
+    #return b64decode(message)
+    return message
   
   
 '''
@@ -258,11 +260,11 @@ if cry.verifySign(publicKey,signature, data):
 else:
    print "FAILED"
 
-
-data="Hello Kasun"
+cry=myCrypto("mysensors")
+data="Hello Kasun Hello Kasun Hello Kasun"
 enc=cry.encryptRSA(data)
 print enc
-print ""
+print "-----"
 plain=cry.decryptRSA(enc)
 print plain
 '''
