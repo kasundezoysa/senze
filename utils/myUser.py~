@@ -64,17 +64,15 @@ class myUser:
    def delUser(self,name,pubkey):
        #Owners can remove himself
        doc=self.database.find_one({"name":name,"pubkey":pubkey})
-       #print uname
+       print name
+       print pubkey
        if not (doc):
           #if the given user is not available
           return False
        else:
-          if(self.usrDoc):
-             post_id=self.database.remove({"name":name,"pubkey":pubkey})
-             return True
-          else:
-             return False
-   
+          post_id=self.database.remove({"name":name,"pubkey":pubkey})
+          return True
+  
    def findUsers(self,u):
        friends=[]
        users=u.split(',')
@@ -174,6 +172,7 @@ class myUser:
                  doc[self.name].append(sensor)
            else:
               doc[self.name]=[sensor]
+
        post_id = self.database.save(doc)
        post_id = self.database.save(self.usrDoc)
        return True
@@ -230,9 +229,10 @@ class myUser:
        
    def isAllow(self,sender,sensors):
        if not (self.usrDoc): return False
-       for sensor in sensors:
-           if not sender in self.usrDoc.keys(): return False
+       if not sender in self.usrDoc.keys(): return False
+       for sensor in sensors:    
            if not sensor in self.usrDoc[sender]: return False
+           #if not sensor=="msg" and not sensor in self.usrDoc[sender]: return False
        return True 
    
    def countDocs(self):

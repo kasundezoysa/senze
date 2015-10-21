@@ -24,7 +24,8 @@ import datetime
 
 #following variables will ve used to handle the GPIO ports
 GPIOLock=False
-GPIOStatus=[False,False,False,False,False,False,False,False]
+GPIOStatus=[False,False,False,False,False,False,False,False,
+False,False,False,False,False,False,False,False]
 
 class myDriver:
   

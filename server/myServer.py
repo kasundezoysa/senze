@@ -107,7 +107,8 @@ class mySensorUDPServer(DatagramProtocol):
            if recipient in connections.keys():
               usr.share(recipient,query.getSensors())
               forward=connections[recipient]
-              self.transport.write(query.getFULLSENZE(),forward)
+              if forward!=0:
+                 self.transport.write(query.getFULLSENZE(),forward)
 
 
    def unshareSensors(self,query):
@@ -119,7 +120,8 @@ class mySensorUDPServer(DatagramProtocol):
            if recipient in connections.keys():
               usr.unShare(recipient,query.getSensors())
               forward=connections[recipient]
-              self.transport.write(query.getFULLSENZE(),forward)
+              if forward!=0:
+                 self.transport.write(query.getFULLSENZE(),forward)
 
 
    def GETSenze(self,query):
@@ -148,9 +150,8 @@ class mySensorUDPServer(DatagramProtocol):
            else:
                if recipient in connections.keys():
                   forward=connections[recipient]
-                  if recipientDB.isShare(sender,query.getSensors()):
+                  if forward!=0 and recipientDB.isShare(sender,query.getSensors()):
                      self.transport.write(query.getFULLSENZE(),forward)
-  
 
    def PUTSenze(self,query):
        global connections
@@ -165,7 +166,8 @@ class mySensorUDPServer(DatagramProtocol):
               recipientDB=myUser(database,recipient)
               if recipientDB.isShare(sender,query.getSensors()):
                  forward=connections[recipient]
-                 self.transport.write(query.getFULLSENZE(),forward)
+                 if forward!=0:
+                    self.transport.write(query.getFULLSENZE(),forward)
 
 
    def DATASenze(self,query):
@@ -175,12 +177,15 @@ class mySensorUDPServer(DatagramProtocol):
        sender=query.getSender()
        usr=myUser(database,sender)
        recipients=query.getUsers()
+       sensors=query.getSensors()
        for recipient in recipients:
            if recipient in connections.keys():
               recipientDB=myUser(database,recipient)
-              if recipientDB.isAllow(sender,query.getSensors()):
+              #DATA msg queries will always deliverd
+              if recipientDB.isAllow(sender,sensors) or "msg" in sensors:
                  forward=connections[recipient]
-                 self.transport.write(query.getFULLSENZE(),forward)
+                 if forward!=0:
+                    self.transport.write(query.getFULLSENZE(),forward)
 
 
    def datagramReceived(self, datagram, address):
@@ -240,13 +245,12 @@ class mySensorUDPServer(DatagramProtocol):
    #Let's send a ping to keep open the port
    def sendPing(self,delay):
        global connections
-       global database
        #print connections
        for recipient in connections:
            forward=connections[recipient]
            timeGap=time.time()-connectionsTime[recipient]
            #print timeGap
-           #If there are no activities in an hour, let's close the connection
+           #If there are no activities messages during in an hour, let's close the connection
            if (timeGap<3600):
               self.transport.write("PING",forward)
            else:
@@ -259,7 +263,7 @@ class mySensorUDPServer(DatagramProtocol):
    def startProtocol(self):
    	print "## SERVER STARTED ##"
         self.sendPing(20)
-   
+
 
 def init():
 # If .servername is not there we will read the server name from keyboard

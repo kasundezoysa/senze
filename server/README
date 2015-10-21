@@ -19,3 +19,14 @@ sudo pip install pymongo
 sudo service mongodb start
 use mysensors
 db.users.insert({name:"kasun",skey:"11234",phone:"0773832923"})
+
+Setup PI- UDP Client
+--------------
+sudo apt-get update
+sudo apt-get install fswebcam
+#check it
+fswebcam --no-banner -r 640x480 image.jpg
+sudo apt-get install build-essential
+sudo apt-get install python-dev
+sudo apt-get install python-twisted
+

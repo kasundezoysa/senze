@@ -172,6 +172,7 @@ class myUser:
                  doc[self.name].append(sensor)
            else:
               doc[self.name]=[sensor]
+
        post_id = self.database.save(doc)
        post_id = self.database.save(self.usrDoc)
        return True
@@ -228,8 +229,8 @@ class myUser:
        
    def isAllow(self,sender,sensors):
        if not (self.usrDoc): return False
-       for sensor in sensors:
-           if not sender in self.usrDoc.keys(): return False
+       if not sender in self.usrDoc.keys(): return False
+       for sensor in sensors:    
            if not sensor in self.usrDoc[sender]: return False
        return True 
    

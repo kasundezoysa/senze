@@ -21,7 +21,6 @@
 ##
 ###############################################################################
 
-
 from twisted.internet.protocol import DatagramProtocol
 from twisted.internet import reactor
 import datetime
@@ -88,7 +87,6 @@ class mySensorDatagramProtocol(DatagramProtocol):
         self.transport.write(senze)
         
     def sendDatagram(self,senze):
-        global server
         cry=myCrypto(name=device)
         senze=cry.signSENZE(senze)
         print senze
@@ -109,12 +107,13 @@ class mySensorDatagramProtocol(DatagramProtocol):
            if "tp" == sensor:
               response ='%s #tp %s' %(response,driver.readTp())
 
-           #If key is requested
+           #If AES key is requested
 	   if "key" == sensor:
-           #If Generate AES Key
              aeskey=""         
+             #Generate AES Key
              if cry.generateAES(driver.readTime()):
                 aeskey=cry.key
+		#Save AES key
                 aesKeys[recipient]=aeskey
                 #AES key is encrypted by the recipient public key
                 rep=myCrypto(recipient)
@@ -128,19 +127,19 @@ class mySensorDatagramProtocol(DatagramProtocol):
               photo=cam.readPhotob64()
               print photo
               response ='%s #photo %s' %(response,photo)
+
            #If time is requested
            elif "time" == sensor:
               response ='%s #time %s' %(response,driver.readTime())
 
            #If gps is requested 
            elif "gps" == sensor:
-              #if aes key is available, encrypt the data
+              #if AES key is available, gps data will be encrypted
               gpsData='%s' %(driver.readGPS())
               if recipient in aesKeys:
                  rep=myCrypto(recipient)
                  rep.key=aesKeys[recipient]
                  gpsData=rep.encrypt(gpsData)
-                 print rep.decrypt(gpsData)
               response ='%s #gps %s' %(response,gpsData)
 
            #If gpio is requested 
@@ -153,14 +152,7 @@ class mySensorDatagramProtocol(DatagramProtocol):
               response ='%s #%s NULL' %(response,sensor)
        
        response="%s @%s" %(response,recipient)
-       senze=cry.signSENZE(response)
-       print senze
-       self.transport.write(senze)
-        
-       #Data can be encrypted as follows
-       #cry=myCrypto(recipient)
-       #enc=cry.encryptRSA(response)
-       #response="DATA #cipher %s @%s" %(enc,recipient)
+       self.sendDatagram(senze=response)
        
 
     #Handle the GPIO ports by calling the functions in the driver class
@@ -175,19 +167,20 @@ class mySensorDatagramProtocol(DatagramProtocol):
               m=re.search(r'\d+$',sensor)
               if m :
                  pinnumber=int(m.group())
-            
+
               if pinnumber>0 and pinnumber<=16:
-                 if data[sensor]=="ON": ans=device.handleON(port=pinnumber)
-                 else: ans=device.handleOFF(port=pinnumber)
+                 if sensor in data.keys() and data[sensor]=="ON": 
+                    ans=device.handleON(port=pinnumber)
+                 elif sensor in data.keys() and data[sensor]=="OFF": 
+                    ans=device.handleOFF(port=pinnumber)
+                 else: ans="UnknownOperation"
                  response='%s #gpio%s %s' %(response,pinnumber,ans)
               else: 
                  response='%s #gpio%d UnKnown' %(response,pinnumber)
           else:
               response='%s #%s UnKnown' %(response,sensor)
-          
        response="%s @%s" %(response,recipient)
-       senze=cry.signSENZE(response)
-       self.transport.write(senze)
+       self.sendDatagram(senze=response)
 
 
     def handleServerResponse(self,senze):
@@ -246,7 +239,7 @@ class mySensorDatagramProtocol(DatagramProtocol):
                 dec=cry.decryptRSA(data['key'])
         	aesKeys[sender]=b64decode(dec)
                 
-           #decrypt and show the gps data
+           #Decrypt and show the gps data
            elif 'gps' in sensors and data['gps']!="":
                 gpsData=data['gps']
                 if sender in aesKeys:

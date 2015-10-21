@@ -21,7 +21,6 @@
 ##
 ###############################################################################
 
-
 from twisted.internet.protocol import DatagramProtocol
 from twisted.internet import reactor
 import datetime
@@ -41,8 +40,8 @@ import re
 import hashlib
 #from PIL import Image
 
-#host='udp.mysensors.info'
-host='localhost'
+host='udp.mysensors.info'
+#host='localhost'
 port=9090
 state="INITIAL"
 device=""
@@ -80,6 +79,23 @@ class mySensorDatagramProtocol(DatagramProtocol):
         #self._reactor.listenUDP(0, self)
         print "STOP **************"
 
+    #Let's send a ping to keep open the active
+    def sendPing(self,delay):
+       global connections
+       global database
+       #print connections
+       for recipient in connections:
+           forward=connections[recipient]
+           timeGap=time.time()-connectionsTime[recipient]
+           #print timeGap
+           #If there are no activities in an hour, let's close the connection
+           if (timeGap<3600):
+              self.transport.write("PING",forward)
+           else:
+              connections[recipient]=0
+           #   connectionsTime.pop(recipient,None)
+       reactor.callLater(delay,self.sendPing,delay=delay)
+
     def register(self):
         global server
         cry=myCrypto(name=device) 
@@ -88,7 +104,6 @@ class mySensorDatagramProtocol(DatagramProtocol):
         self.transport.write(senze)
         
     def sendDatagram(self,senze):
-        global server
         cry=myCrypto(name=device)
         senze=cry.signSENZE(senze)
         print senze
@@ -154,14 +169,7 @@ class mySensorDatagramProtocol(DatagramProtocol):
               response ='%s #%s NULL' %(response,sensor)
        
        response="%s @%s" %(response,recipient)
-       senze=cry.signSENZE(response)
-       print senze
-       self.transport.write(senze)
-        
-       #Data can be encrypted as follows
-       #cry=myCrypto(recipient)
-       #enc=cry.encryptRSA(response)
-       #response="DATA #cipher %s @%s" %(enc,recipient)
+       self.sendDatagram(senze=response)
        
 
     #Handle the GPIO ports by calling the functions in the driver class
@@ -176,19 +184,20 @@ class mySensorDatagramProtocol(DatagramProtocol):
               m=re.search(r'\d+$',sensor)
               if m :
                  pinnumber=int(m.group())
-            
+
               if pinnumber>0 and pinnumber<=16:
-                 if data[sensor]=="ON": ans=device.handleON(port=pinnumber)
-                 else: ans=device.handleOFF(port=pinnumber)
+                 if sensor in data.keys() and data[sensor]=="ON": 
+                    ans=device.handleON(port=pinnumber)
+                 elif sensor in data.keys() and data[sensor]=="OFF": 
+                    ans=device.handleOFF(port=pinnumber)
+                 else: ans="UnknownOperation"
                  response='%s #gpio%s %s' %(response,pinnumber,ans)
               else: 
                  response='%s #gpio%d UnKnown' %(response,pinnumber)
           else:
               response='%s #%s UnKnown' %(response,sensor)
-          
        response="%s @%s" %(response,recipient)
-       senze=cry.signSENZE(response)
-       self.transport.write(senze)
+       self.sendDatagram(senze=response)
 
 
     def handleServerResponse(self,senze):
