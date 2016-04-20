@@ -20,7 +20,7 @@ DATA #pubkey PublicKeyOfsw1 #time t4 ^mysensors Signature
 and photo to the owner.  
 SHARE #gpio13 #photo #msg #time t5 @u1 ^sw1 Signature
 The owner sould reply to it as follows
-SHARE #msg OK #time t6 @sw1 ^u1 Signature
+DATA #msg OK #time t6 @sw1 ^u1 Signature
 (In absense of the above SENZE, sw1 should resend it SHARE SENZE)
 
 3. The recipient should cotrol the switch by sending the following SENZE

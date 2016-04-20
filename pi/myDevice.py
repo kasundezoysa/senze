@@ -77,7 +77,17 @@ class mySensorDatagramProtocol(DatagramProtocol):
         else:
            #thread.start_new_thread(self.showPhoto,("p1.jpg",))
            reactor.callLater(1,self.sendPing)
-           thread.start_new_thread(self.readSenze,()) 
+           if os.path.isfile('SENZES'):
+              #The Senzes will be read form the SENZE file
+              f=open("SENZES","r")
+              lines = f.readlines()
+              t=0
+              for line in lines:
+                  if not line.startswith("#"):
+                     senze=line.rstrip("\n")
+                     t+=2
+                     reactor.callLater(t,self.sendDatagram,senze=senze)
+           #thread.start_new_thread(self.readSenze,()) 
            #response=raw_input("Enter your Senze:")
            #self.sendDatagram(response)
 
@@ -187,10 +197,12 @@ class mySensorDatagramProtocol(DatagramProtocol):
               if pinnumber>0 and pinnumber<=16:
                  if data[sensor]=="ON": ans=driver.handleON(port=pinnumber)
                  else: ans=driver.handleOFF(port=pinnumber)
-                 response='%s #gpio%s %s' %(response,pinnumber,ans)
+                 #response='%s #gpio%s %s' %(response,pinnumber,ans)
+                 response='%s #msg %s' %(response,ans)
+
               else: 
                  response='%s #gpio%d UnKnown' %(response,pinnumber)
-          else:
+          elif sensor!="time":
               response='%s #%s UnKnown' %(response,sensor)
           
        response="%s @%s" %(response,recipient)
@@ -313,7 +325,7 @@ class mySensorDatagramProtocol(DatagramProtocol):
                
         else:
            if cmd=="DATA":
-              if 'msg' in sensors and 'UserCreated' in data['msg']:
+              if 'msg' in sensors and 'REGISTRATION_DONE' in data['msg']:
                  # Creating the .devicename file and store the device name 
                  # public key of mysensor server  
                  f=open(".devicename",'w')
@@ -327,7 +339,7 @@ class mySensorDatagramProtocol(DatagramProtocol):
                  print "The system halted!"
                  reactor.stop()
 
-              elif 'msg' in sensors and 'UserCreationFailed' in data['msg']:
+           elif 'msg' in sensors and 'ALREADY_REGISTERED' in data['msg']:
                  print "This user name may be already taken"
                  print "You can try it again with different username"
                  print "The system halted!"
